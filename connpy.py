@@ -37,7 +37,7 @@ def extractAuthorInfo(infostr):
     """
     # pattern is (last_name, first_name (affliation, country))
     matches = re.search("^(.+),([^()]+)\((.+)\)$",infostr)
-    return {'First name':matches.groups()[0], 'Last name':matches.groups()[1].strip(),
+    return {'Last name':matches.groups()[0], 'First name':matches.groups()[1].strip(),
             'Organization':matches.groups()[2]}
 
 #------------------------------------------------------------------------------
@@ -105,7 +105,9 @@ def prepareEventData(sessionData):
 def syncEventData(eventExportData,url):
     serverEventData = getSessionsFromServer(url)
     # build a dictionary for indexing the paper in the eventExportData
-    paperLookup = { eventExportData[linenum][4]:linenum for linenum in range(len(eventExportData)) } 
+    paperLookup = { eventExportData[linenum][4]:linenum for linenum in range(len(eventExportData)) }
+    if len(serverEventData) == 0:
+        return
     for day in serverEventData['days']:
         for event_srv in day['events']:
             linenum = -1
@@ -212,8 +214,8 @@ def extractSessionData(sessionCSVFile):
 #------------------------------------------------------------------------------
 
 if __name__ == "__main__":
-    sessionData = extractSessionData('2016icce-sessions.csv')
-    sessionData, speakerData = extractPaperData('2016icce-papers.csv',sessionData)
+    sessionData = extractSessionData('2017icce-sessions.csv')
+    sessionData, speakerData = extractPaperData('2017icce-papers.csv',sessionData)
     
     eventExportData = prepareEventData(sessionData)
     syncEventData(eventExportData, base_url)
