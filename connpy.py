@@ -27,7 +27,6 @@ def getSpeakersFromServer(url):
     data = json.loads(response.text)
     return data
 
-
 #------------------------------------------------------------------------------
 
 def extractAuthorInfo(infostr):
@@ -39,6 +38,13 @@ def extractAuthorInfo(infostr):
     matches = re.search("^(.+),([^()]+)\((.+)\)$",infostr)
     return {'Last name':matches.groups()[0], 'First name':matches.groups()[1].strip(),
             'Organization':matches.groups()[2]}
+
+def extractDateTime(datetimestr):
+    """
+        This function extracts the date and time from the server format to the
+        format used in csv export
+    """
+    return datetimestr[:-8].replace('T',' ')
 
 #------------------------------------------------------------------------------
 
@@ -96,9 +102,11 @@ def prepareEventData(sessionData):
                     endtime = (sessionstarttime + timedelta(minutes=order*min_per_paper)).strftime('%Y-%m-%d %H:%M')
                 # id, start at, end at, text, name, place, version, level_id, type_id, track_id, url, event_type, order, deleted_at, created_at, updated_at
                 eventExportData.append([paperid, starttime, endtime, paper['Abstract'], paper['Title'], paper['Session room'], 'NULL','NULL','1',session['ID'],paper['URL'], 'session', paper['Order in session'], 'NULL','NULL',datetime.now().strftime('%Y-%m-%d %H:%M')])
+                #eventExportData.append(['NULL', starttime, endtime, paper['Abstract'], paper['Title'], paper['Session room'], 'NULL','NULL','1',session['ID'],paper['URL'], 'session', paper['Order in session'], 'NULL','NULL',datetime.now().strftime('%Y-%m-%d %H:%M')])
                 paperid+=1
         else:
             eventExportData.append([paperid, session['Start time'], session['End time'], '', session['Title'], session['Room'], 'NULL','NULL','1',session['ID'], '', 'session', 'NULL', 'NULL','NULL',datetime.now().strftime('%Y-%m-%d %H:%M')])
+            #eventExportData.append(['NULL', session['Start time'], session['End time'], '', session['Title'], session['Room'], 'NULL','NULL','1',session['ID'], '', 'session', 'NULL', 'NULL','NULL',datetime.now().strftime('%Y-%m-%d %H:%M')])
             paperid+=1
     return eventExportData
 
@@ -106,6 +114,7 @@ def syncEventData(eventExportData,url):
     serverEventData = getSessionsFromServer(url)
     # build a dictionary for indexing the paper in the eventExportData
     paperLookup = { eventExportData[linenum][4]:linenum for linenum in range(len(eventExportData)) }
+    linesNotFound = range(len(eventExportData))
     if len(serverEventData) == 0:
         return
     for day in serverEventData['days']:
@@ -114,12 +123,18 @@ def syncEventData(eventExportData,url):
             try:
                 linenum = paperLookup[event_srv['name'].encode('utf-8')]
             except:
-                print("The event {} is not yet on the server".format(event_srv['name']))
+                print(event_srv)
+                print("The event {} is on the server but not in local data".format(event_srv['name'].encode('utf-8')))
+                if False: #disabled the deletion, was: event_srv[u'deleted'] is False:
+                    #                       id,                   start at,                           end at,                           text,                              name,                             place,               version, level_id, type_id,            track_id,            url,              event_type,order,              deleted_at,                              created_at, updated_at
+                    eventExportData.append([event_srv[u'eventId'],extractDateTime(event_srv[u'from']),extractDateTime(event_srv[u'to']),event_srv[u'text'].encode('utf-8'),event_srv['name'].encode('utf-8'),event_srv[u'place'],'NULL',  'NULL',   event_srv[u'type'], event_srv[u'track'], event_srv[u'link'],'session',event_srv[u'order'],datetime.now().strftime('%Y-%m-%d %H:%M'),'NULL',datetime.now().strftime('%Y-%m-%d %H:%M')])
                 continue
             event_loc = eventExportData[linenum]
             if event_loc[0] != event_srv['eventId']:
                 event_loc[0] = event_srv['eventId']
-    # todo: delete unreferenced server papers??
+            linesNotFound.remove(linenum)
+    for linenum in linesNotFound:
+        print("The event {} is not yet on the server".format(event_srv['name']))
             
 
 def updateEventIds(eventExportData):
