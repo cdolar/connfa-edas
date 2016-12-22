@@ -319,12 +319,24 @@ class ConnfaData:
     def getMatchingEvents(self, title=None, updated_at=None):
         matchingEvents = []
         for event in self.events:
-            if title != None and event.name == title:
+            if title != None and event.name != title:
                 continue
             if updated_at != None and fromDateString(event.updated_at).date != fromDateString(updated_at).date():
                 continue
             matchingEvents.append(event)
         return matchingEvents
+    
+    def getMatchingEventSpeakers(self, event_id=None, speaker_id=None, updated_at=None)
+        matchingEventSpeakers = []
+        for eventSpeaker in self.eventSpeakers:
+            if event_id != None and eventSpeakers.event_id != event_id:
+                continue
+            if speaker_id != None and eventSpeakers.speaker_id != speaker_id:
+                continue
+            if updated_at != None and fromDateString(eventSpeakers.updated_at).date != fromDateString(updated_at).date():
+                continue
+            matchingEventSpeakers.append(eventSpeakers)
+        return matchingEventSpeakers
     
 class EDASData:    
     def __extractSessionData(self):
