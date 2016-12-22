@@ -88,7 +88,7 @@ class Event:
         self.updated_at = nowString()
     
 def event_from_array(array):
-    return Event(id=array[0], start_at=array[1], end_at=array[2],
+    return Event(id=int(array[0]), start_at=array[1], end_at=array[2],
                      text=array[3], name=array[4], place=array[5], 
                      version=array[6], level_id=array[7], type_id=array[8],
                      track_id=array[9], url=array[10], event_type=array[11],
@@ -123,7 +123,7 @@ class EventTrack:
         self.updated_at = nowString()
         
 def track_from_array(array):
-    return EventTrack(id=array[0], name=array[1], order=array[2],
+    return EventTrack(id=int(array[0]), name=array[1], order=array[2],
                           deleted_at=array[3], created_at=array[4], 
                           updated_at=array[5])
 
@@ -137,7 +137,7 @@ class EventSpeaker:
         self.updated_at = updated_at
     
     def __rep__(self):
-        return "EventSpeaker: id {}, event_id {}, speaker_id {}, name {}, created_at {}, updated_at {}".format(self.id, self.event_id, self.speaker_id, self.created_at, self.updated_at)
+        return "EventSpeaker: id {}, event_id {}, speaker_id {}, created_at {}, updated_at {}".format(self.id, self.event_id, self.speaker_id, self.created_at, self.updated_at)
     
     def __str__(self):
         return self.__rep__()
@@ -148,12 +148,12 @@ class EventSpeaker:
     
     def update(self, eventSpeaker):
         self.event_id = eventSpeaker.event_id
-        self.speaker_id = eventSpeaker.speaker
+        self.speaker_id = eventSpeaker.speaker_id
         self.created_at = eventSpeaker.created_at
         self.updated_at = nowString()
         
 def event_speaker_from_array(array):
-    return EventSpeaker(id=array[0], event_id=array[1], speaker_id=array[2],
+    return EventSpeaker(id=int(array[0]), event_id=array[1], speaker_id=array[2],
                         created_at=array[3], updated_at=array[4])
 
 class Speaker:
@@ -205,7 +205,7 @@ class Speaker:
         self.deleted_at = speaker.deleted_at
 
 def speaker_from_array(array):
-    return Speaker(id=array[0], first_name=array[1], last_name=array[2], 
+    return Speaker(id=int(array[0]), first_name=array[1], last_name=array[2], 
                    characteristic=array[3], job=array[4], organization=array[5],
                    twitter_name=array[6], website=array[7], avatar=array[8],
                    email=array[9], order=array[10], created_at=array[11],
@@ -247,7 +247,7 @@ class ConnfaData:
                 newEvent = event_from_array(row)
                 self.events.append(newEvent)
                 self.lastEventId = max(self.lastEventId, newEvent.id)
-        # now the event-speakers dad
+        # now the event-speakers data
         with open(eventspeakersFilename) as f:
             reader = csv.reader(f)
             for row in reader:
@@ -255,14 +255,41 @@ class ConnfaData:
                 self.eventSpeakers.append(newEventSpeaker)
                 self.lastEventSpeakerId = max(self.lastEventSpeakerId, newEventSpeaker.id)
 
+    def saveData(self, speakersFilename="speakers_export.csv", 
+                 eventsFilename="events_export.csv",
+                 eventspeakersFilename="event_speakers_export.csv",
+                 tracksFilename="tracks_export.csv"):
+        # first, save the tracks
+        with open(tracksFilename,"w") as f:
+            writer = csv.writer(f)
+            for track in self.tracks:
+                writer.writerow(track.to_array())
+        # now save the speakers
+        with open(speakersFilename,"w") as f:
+            writer = csv.writer(f)
+            for speaker in self.speakers:
+                writer.writerow(speaker.to_array())
+        # now save the events
+        with open(eventsFilename,"w") as f:
+            writer = csv.writer(f)
+            for event in self.events:
+                writer.writerow(event.to_array())
+        # now the event-speakers data
+        with open(eventspeakersFilename,"w") as f:
+            writer = csv.writer(f)
+            for eventSpeaker in self.eventSpeakers:
+                writer.writerow(eventSpeaker.to_array())
+    
     def insertSpeaker(self, speaker):
         matchSpeakers = self.getMatchingSpeakers(first_name=speaker.first_name, last_name=speaker.last_name)
         if len(matchSpeakers)==0:
             self.lastSpeakerId=self.lastSpeakerId+1
             speaker.id = self.lastSpeakerId
             self.speakers.append(speaker)
+            print("Inserting speaker {}".format(speaker))
         else:
             matchSpeakers[0].update(speaker)
+            speaker = matchSpeakers[0]
             if len(matchSpeakers) > 1:
                 print("More than one match for speaker {}".format(speaker.__str__()))
         return speaker
@@ -270,11 +297,13 @@ class ConnfaData:
     def insertTrack(self, track):
         matchTracks = self.getMatchingTracks(track.name)
         if len(matchTracks)==0:
-            self.lastTrackId=self.lastTrackId+1
+            self.lastTrackId+=1
             track.id = self.lastTrackId
             self.tracks.append(track)
+            print("Inserting track {}".format(track))
         else:
             matchTracks[0].update(track)
+            track = matchTracks[0]
             if len(matchTracks) > 1:
                 print("More than one match for track {}".format(track.__str__()))
         return track
@@ -285,14 +314,28 @@ class ConnfaData:
             self.lastEventId+=1
             event.id = self.lastEventId
             self.events.append(event)
+            print("Inserting event {}".format(event))
         else:
             matchEvents[0].update(event)
+            event = matchEvents[0]
             if len(matchEvents) > 1:
                 print("More than one match for event {}".format(event.__str__()))
         return event
     
-    def insertEventSpeakers(self, event, speakers):
-        pass
+    def insertEventSpeaker(self, eventSpeaker):
+        matchEventSpeakers = self.getMatchingEventSpeakers(event_id=eventSpeaker.event_id, 
+                                                           speaker_id=eventSpeaker.speaker_id)
+        if len(matchEventSpeakers)==0:
+            self.lastEventSpeakerId+=1
+            eventSpeaker.id = self.lastEventSpeakerId
+            self.eventSpeakers.append(eventSpeaker)
+            print("Inserting event speaker {}".format(eventSpeaker))
+        else:
+            matchEventSpeakers[0].update(eventSpeaker)
+            eventSpeaker = matchEventSpeakers[0]
+            if len(matchEventSpeakers) > 1:
+                print("More than one match for event spekaer {}".format(eventSpeaker.__str__()))
+        return eventSpeaker
     
     def getMatchingSpeakers(self, first_name=None, last_name=None, updated_at=None):
         matchingSpeakers=[]
@@ -326,16 +369,16 @@ class ConnfaData:
             matchingEvents.append(event)
         return matchingEvents
     
-    def getMatchingEventSpeakers(self, event_id=None, speaker_id=None, updated_at=None)
+    def getMatchingEventSpeakers(self, event_id=None, speaker_id=None, updated_at=None):
         matchingEventSpeakers = []
         for eventSpeaker in self.eventSpeakers:
-            if event_id != None and eventSpeakers.event_id != event_id:
+            if event_id != None and eventSpeaker.event_id != event_id:
                 continue
-            if speaker_id != None and eventSpeakers.speaker_id != speaker_id:
+            if speaker_id != None and eventSpeaker.speaker_id != speaker_id:
                 continue
-            if updated_at != None and fromDateString(eventSpeakers.updated_at).date != fromDateString(updated_at).date():
+            if updated_at != None and fromDateString(eventSpeaker.updated_at).date != fromDateString(updated_at).date():
                 continue
-            matchingEventSpeakers.append(eventSpeakers)
+            matchingEventSpeakers.append(eventSpeaker)
         return matchingEventSpeakers
     
 class EDASData:    
@@ -386,38 +429,44 @@ class EDASData:
             connfaData.insertTrack(track)
             if len(session['Papers']) > 0:
                 for paper in session['Papers']:
-                    sessionstarttime = datetime.strptime(paper['Session start time'],'%Y-%m-%d %H:%M')
+                    sessionstarttime = fromDateString(paper['Session start time'])
                     min_per_paper=float(session['Minutes per paper'])
                     order = int(paper['Order in session'])
                     if ("poster" in session['Title'].lower()):                
                         starttime = session['Start time']
                         endtime = session['End time']
                     else:
-                        starttime = (sessionstarttime + datetime.timedelta(minutes=(order-1)*min_per_paper)).strftime('%Y-%m-%d %H:%M')
-                        endtime = (sessionstarttime + datetime.timedelta(minutes=order*min_per_paper)).strftime('%Y-%m-%d %H:%M')
-                    event = Event(start_at=toDateString(starttime), end_at=toDateString(endtime),
+                        starttime = toDateString(sessionstarttime + datetime.timedelta(minutes=(order-1)*min_per_paper))
+                        endtime = toDateString(sessionstarttime + datetime.timedelta(minutes=order*min_per_paper))
+                    event = Event(start_at=starttime, end_at=endtime,
                                   text=paper['Abstract'], name=paper['Title'], place=paper['Session room'], 
                                   type_id='1',track_id=session['ID'],url=paper['URL'], 
                                   event_type='session', order=paper['Order in session'])
+                    event = connfaData.insertEvent(event)
                     for n in range(1,9):
                         author = paper['Author {}'.format(n)]
                         if len(author)>0:
                             speaker = extractAuthorInfo(author)
                             if n==1:
                                 speaker.characteristic = paper['First author bio']
-                            connfaData.insertSpeaker(speaker)
-                            connfaData.insertEventSpeaker(event,speaker)
+                            speaker = connfaData.insertSpeaker(speaker)
+                            eventSpeaker = EventSpeaker(event_id=event.id, speaker_id=speaker.id)
+                            eventSpeaker = connfaData.insertEventSpeaker(eventSpeaker)
             else:
                 event = Event(start_at=toDateString(session['Start time']), 
                               end_at=toDateString(session['End time']), text='', name=session['Title'], 
                               place=session['Room'], type_id='1', track_id=session['ID'], url='', 
                               event_type='session')
-            connfaData.insertEvent(event)
-
+                connfaData.insertEvent(event)
+        # todo: set deleted_at to all events not updated today (or this hour)
 
 if __name__ == "__main__":
     data = ConnfaData()
     data.loadData()
     edas = EDASData()
     edas.loadData()
-    edas.exportTrackData(data)
+    edas.exportData(data)
+    data.saveData(speakersFilename="speakers_export_new.csv", 
+                  eventsFilename="events_export_ew.csv",
+                  eventspeakersFilename="event_speakers_export_new.csv",
+                  tracksFilename="tracks_export_new.csv")
