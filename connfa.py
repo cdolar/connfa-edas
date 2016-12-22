@@ -13,8 +13,9 @@ def extractAuthorInfo(infostr):
     """
     # pattern is (last_name, first_name (affliation, country))
     matches = re.search("^(.+),([^()]+)\((.+)\)$",infostr)
-    return {'Last name':matches.groups()[0], 'First name':matches.groups()[1].strip(),
-            'Organization':matches.groups()[2]}
+    speaker = Speaker(last_name=matches.groups()[0], first_name=matches.groups()[1].strip(),
+                      organization=matches.groups()[2])
+    return speaker
 
 def nowString():
     return datetime.datetime.now().strftime('%Y-%m-%d %H:%M')
@@ -34,8 +35,8 @@ def fromDateString(st):
 class Event:
     def __init__(self, id=None, start_at=datetime.datetime.now, 
                  end_at=datetime.datetime.now, text="", name="",
-                 place="NULL", version="NULL", level_id=None, type_id=None, 
-                 track_id=None, url="NULL", event_type="NULL", order="NULL", 
+                 place="NULL", version="NULL", level_id="NULL", type_id="NULL", 
+                 track_id="NULL", url="NULL", event_type="NULL", order="NULL", 
                  deleted_at="NULL", created_at=nowString(), 
                  updated_at=nowString()):
         self.id = id
@@ -326,7 +327,7 @@ class ConnfaData:
         return matchingEvents
     
 class EDASData:    
-    def extractSessionData(self):
+    def __extractSessionData(self):
         with open(self.sessionsFileName) as f:
             reader = csv.reader(f)
             cols = reader.next()
@@ -339,7 +340,7 @@ class EDASData:
                 rowdata['ID']=num
                 self.sessionData[rowdata['Title']] = rowdata
     
-    def extractPaperData(self):
+    def __extractPaperData(self):
         with open (self.papersFileName, 'r') as f:
             reader = csv.reader(f)
             cols = reader.next()
@@ -354,42 +355,23 @@ class EDASData:
                 except:
                     print("No session data for session {}".format(rowdata['Session']))
                     data.append(rowdata)
-                for n in range(1,9):
-                    author = rowdata['Author {}'.format(n)]
-                    if len(author)>0:
-                        print author
-                        speakerdata = extractAuthorInfo(author)
-                        speakerkey = "{}, {}".format(speakerdata['Last name'], speakerdata['First name'])
-                        speakerdata['Bio']=''
-                        if n==1:
-                            speakerdata['Bio'] = rowdata['First author bio']
-                        if not speakerkey in self.speakers.keys(): 
-                            self.speakers[speakerkey] = speakerdata
     
     def loadData(self, sessionsFileName="2017icce-sessions.csv", 
                  papersFileName="2017icce-papers.csv" ):
         self.sessionsFileName = sessionsFileName
         self.papersFileName = papersFileName
-        self.extractSessionData()
-        self.extractPaperData()
+        self.__extractSessionData()
+        self.__extractPaperData()
     
-    def exportTrackData(self, connfaData):
+    def exportData(self, connfaData):
         """
-            Export the track data.
+            Export the data.
         """    
         for key in self.sessionData.keys():
             session = self.sessionData[key]
             # id, name, order, deleted, created, updated
-            track = EventTrack(id=session['ID'], name=session['Title'],order=session['ID'],
-            deleted_at='NULL',created_at='NULL',updated_at=nowString())
+            track = EventTrack(id=session['ID'], name=session['Title'],order=session['ID'])
             connfaData.insertTrack(track)
-
-    
-    def prepareEventData(self):
-        eventExportData = []
-        paperid=1
-        for key in self.sessionData.keys():
-            session = self.sessionData[key]
             if len(session['Papers']) > 0:
                 for paper in session['Papers']:
                     sessionstarttime = datetime.strptime(paper['Session start time'],'%Y-%m-%d %H:%M')
@@ -401,17 +383,24 @@ class EDASData:
                     else:
                         starttime = (sessionstarttime + datetime.timedelta(minutes=(order-1)*min_per_paper)).strftime('%Y-%m-%d %H:%M')
                         endtime = (sessionstarttime + datetime.timedelta(minutes=order*min_per_paper)).strftime('%Y-%m-%d %H:%M')
-                    # id, start at, end at, text, name, place, version, level_id, type_id, track_id, url, event_type, order, deleted_at, created_at, updated_at
-                    eventExportData.append([paperid, starttime, endtime, paper['Abstract'], paper['Title'], paper['Session room'], 'NULL','NULL','1',session['ID'],paper['URL'], 'session', paper['Order in session'], 'NULL','NULL',datetime.now().strftime('%Y-%m-%d %H:%M')])
-                    #eventExportData.append(['NULL', starttime, endtime, paper['Abstract'], paper['Title'], paper['Session room'], 'NULL','NULL','1',session['ID'],paper['URL'], 'session', paper['Order in session'], 'NULL','NULL',datetime.now().strftime('%Y-%m-%d %H:%M')])
-                    paperid+=1
+                    event = Event(start_at=toDateString(starttime), end_at=toDateString(endtime),
+                                  text=paper['Abstract'], name=paper['Title'], place=paper['Session room'], 
+                                  type_id='1',track_id=session['ID'],url=paper['URL'], 
+                                  event_type='session', order=paper['Order in session'])
+                    for n in range(1,9):
+                        author = paper['Author {}'.format(n)]
+                        if len(author)>0:
+                            speaker = extractAuthorInfo(author)
+                            if n==1:
+                                speaker.characteristic = paper['First author bio']
+                            connfaData.insertSpeaker(speaker)
+                            connfaData.insertEventSpeaker(event,speaker)
             else:
-                eventExportData.append([paperid, session['Start time'], session['End time'], '', session['Title'], session['Room'], 'NULL','NULL','1',session['ID'], '', 'session', 'NULL', 'NULL','NULL',datetime.now().strftime('%Y-%m-%d %H:%M')])
-                #eventExportData.append(['NULL', session['Start time'], session['End time'], '', session['Title'], session['Room'], 'NULL','NULL','1',session['ID'], '', 'session', 'NULL', 'NULL','NULL',datetime.now().strftime('%Y-%m-%d %H:%M')])
-                paperid+=1
-        return eventExportData
-
-
+                event = Event(start_at=toDateString(session['Start time']), 
+                              end_at=toDateString(session['End time']), text='', name=session['Title'], 
+                              place=session['Room'], type_id='1', track_id=session['ID'], url='', 
+                              event_type='session')
+            connfaData.insertEvent(event)
 
 
 if __name__ == "__main__":
