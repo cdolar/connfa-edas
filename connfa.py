@@ -4,7 +4,17 @@ Created on Wed Dec 14 07:53:12 2016
 
 @author: c_dolar
 """
-import datetime, csv
+import datetime, csv, re
+
+def extractAuthorInfo(infostr):
+    """
+        This function extracts data from the author information string.
+        The string needs to be in the format Last_name, first_name (affiliation, country)
+    """
+    # pattern is (last_name, first_name (affliation, country))
+    matches = re.search("^(.+),([^()]+)\((.+)\)$",infostr)
+    return {'Last name':matches.groups()[0], 'First name':matches.groups()[1].strip(),
+            'Organization':matches.groups()[2]}
 
 def nowString():
     return datetime.datetime.now().strftime('%Y-%m-%d %H:%M')
@@ -44,6 +54,12 @@ class Event:
         self.deleted_at = deleted_at
         self.created_at = created_at
         self.updated_at = updated_at
+    
+    def __rep__(self):
+        return "Event: id {}, start_at {}, end_at {}, name {}, created_at {}, updated_at {}, deleted_at {}".format(self.id, self.start_at, self.end_at, self.name, self.created_at, self.updated_at, self.deleted_at)
+    
+    def __str__(self):
+        return self.__rep__()
 
     def to_array(self):
         # id, start at, end at, text, name, place, version, level_id, type_id, 
@@ -52,6 +68,23 @@ class Event:
                 self.place, self.version, self.level_id, self.type_id,
                 self.track_id, self.url, self.event_type, self.order,
                 self.deleted_at, self.created_at, self.updated_at]
+    
+    def update(self, event):
+        self.start_at = event.start_at
+        self.end_at = event.end_at
+        self.text = event.text
+        self.name = event.name
+        self.place = event.place
+        self.version = event.version
+        self.level_id = event.level_id
+        self.type_id = event.type_id
+        self.track_id = event.track_id
+        self.url = event.url
+        self.event_type = event.event_type
+        self.order = event.order
+        self.deleted_at = event.deleted_at
+        self.created_at = event.created_at
+        self.updated_at = nowString()
     
 def event_from_array(array):
     return Event(id=array[0], start_at=array[1], end_at=array[2],
@@ -71,10 +104,23 @@ class EventTrack:
         self.created_at = created_at
         self.updated_at = updated_at
     
+    def __rep__(self):
+        return "Track: id {}, name {}, created_at {}, updated_at {}, deleted_at {}".format(self.id, self.name, self.created_at, self.updated_at, self.deleted_at)
+    
+    def __str__(self):
+        return self.__rep__()
+    
     def to_array(self):
         return [self.id, self.name, self.deleted_at, self.created_at, 
                 self.updated_at]
     
+    def update(self, track):
+        self.name = track.name
+        self.order = track.order
+        self.deleted_at = track.deleted_at
+        self.created_at = track.created_at
+        self.updated_at = nowString()
+        
 def track_from_array(array):
     return EventTrack(id=array[0], name=array[1], order=array[2],
                           deleted_at=array[3], created_at=array[4], 
@@ -89,10 +135,22 @@ class EventSpeaker:
         self.created_at = created_at
         self.updated_at = updated_at
     
+    def __rep__(self):
+        return "EventSpeaker: id {}, event_id {}, speaker_id {}, name {}, created_at {}, updated_at {}".format(self.id, self.event_id, self.speaker_id, self.created_at, self.updated_at)
+    
+    def __str__(self):
+        return self.__rep__()
+    
     def to_array(self):
         return [self.id, self.event_id, self.speaker_id, self.created_at, 
                 self.updated_at]
-
+    
+    def update(self, eventSpeaker):
+        self.event_id = eventSpeaker.event_id
+        self.speaker_id = eventSpeaker.speaker
+        self.created_at = eventSpeaker.created_at
+        self.updated_at = nowString()
+        
 def event_speaker_from_array(array):
     return EventSpeaker(id=array[0], event_id=array[1], speaker_id=array[2],
                         created_at=array[3], updated_at=array[4])
@@ -118,11 +176,32 @@ class Speaker:
         self.updated_at = updated_at
         self.deleted_at = deleted_at
     
+    def __rep__(self):
+        return "Speaker: id {}, first_name {}, last_name {}, created_at {}, updated_at {}, deleted_at {}".format(self.id, self.first_name, self.last_name, self.created_at, self.updated_at, self.deleted_at)
+    
+    def __str__(self):
+        return self.__rep__()
+    
     def to_array(self):
         return [self.id, self.first_name, self.last_name, self.characteristic,
                 self.job, self.organization, self.twitter_name, self.website,
                 self.avatar, self.email, self.order, self.created_at, 
                 self.updated_at, self.deleted_at]
+    
+    def update(self, speaker):
+        self.first_name = speaker.first_name
+        self.last_name = speaker.last_name
+        self.characteristic = speaker.characteristic
+        self.job = speaker.job
+        self.organization = speaker.organization
+        self.twitter_name = speaker.twitter_name
+        self.website = speaker.website
+        self.avatar = speaker.avatar
+        self.email = speaker.email
+        self.order = speaker.order
+        self.created_at = speaker.created_at
+        self.updated_at = nowString()
+        self.deleted_at = speaker.deleted_at
 
 def speaker_from_array(array):
     return Speaker(id=array[0], first_name=array[1], last_name=array[2], 
@@ -134,11 +213,15 @@ def speaker_from_array(array):
 class ConnfaData:
     def __init__(self):
         self.tracks=[]
+        self.lastTrackId=0
         self.events=[]
+        self.lastEventId=0
         self.speakers=[]
+        self.lastSpeakerId=0
         self.eventSpeakers=[]
+        self.lastEventSpeakerId=0
     
-    def load_data(self, speakersFilename="speakers_export.csv", 
+    def loadData(self, speakersFilename="speakers_export.csv", 
                  eventsFilename="events_export.csv",
                  eventspeakersFilename="event_speakers_export.csv",
                  tracksFilename="tracks_export.csv"):
@@ -146,39 +229,194 @@ class ConnfaData:
         with open(tracksFilename) as f:
             reader = csv.reader(f)
             for row in reader:
-                self.tracks.append(track_from_array(row))
+                newTrack = track_from_array(row)
+                self.tracks.append(newTrack)
+                self.lastTrackId = max(self.lastTrackId, newTrack.id)
         # now load the speakers
         with open(speakersFilename) as f:
             reader = csv.reader(f)
             for row in reader:
-                self.speakers.append(speaker_from_array(row))
+                newSpeaker = speaker_from_array(row)
+                self.speakers.append(newSpeaker)
+                self.lastSpeakerId = max(self.lastSpeakerId, newSpeaker.id)
         # now load the events
         with open(eventsFilename) as f:
             reader = csv.reader(f)
             for row in reader:
-                self.events.append(event_from_array(row))
+                newEvent = event_from_array(row)
+                self.events.append(newEvent)
+                self.lastEventId = max(self.lastEventId, newEvent.id)
         # now the event-speakers dad
         with open(eventspeakersFilename) as f:
             reader = csv.reader(f)
             for row in reader:
-                self.eventSpeakers.append(event_speaker_from_array(row))
+                newEventSpeaker = event_speaker_from_array(row)
+                self.eventSpeakers.append(newEventSpeaker)
+                self.lastEventSpeakerId = max(self.lastEventSpeakerId, newEventSpeaker.id)
+
+    def insertSpeaker(self, speaker):
+        matchSpeakers = self.getMatchingSpeakers(first_name=speaker.first_name, last_name=speaker.last_name)
+        if len(matchSpeakers)==0:
+            self.lastSpeakerId=self.lastSpeakerId+1
+            speaker.id = self.lastSpeakerId
+            self.speakers.append(speaker)
+        else:
+            matchSpeakers[0].update(speaker)
+            if len(matchSpeakers) > 1:
+                print("More than one match for speaker {}".format(speaker.__str__()))
+        return speaker
     
-    def importData(self, sessionsFileName="2017_sessions.csv", 
-                   papersFileName="2017_papers.csv"):
-        with open(sessionsFileName) as f:
+    def insertTrack(self, track):
+        matchTracks = self.getMatchingTracks(track.name)
+        if len(matchTracks)==0:
+            self.lastTrackId=self.lastTrackId+1
+            track.id = self.lastTrackId
+            self.tracks.append(track)
+        else:
+            matchTracks[0].update(track)
+            if len(matchTracks) > 1:
+                print("More than one match for track {}".format(track.__str__()))
+        return track
+    
+    def insertEvent(self, event):
+        matchEvents = self.getMatchingEvents(event.name)
+        if len(matchEvents)==0:
+            self.lastEventId+=1
+            event.id = self.lastEventId
+            self.events.append(event)
+        else:
+            matchEvents[0].update(event)
+            if len(matchEvents) > 1:
+                print("More than one match for event {}".format(event.__str__()))
+        return event
+    
+    def insertEventSpeakers(self, event, speakers):
+        pass
+    
+    def getMatchingSpeakers(self, first_name=None, last_name=None, updated_at=None):
+        matchingSpeakers=[]
+        for speaker in self.speakers:
+            if first_name != None and speaker.first_name != first_name:
+                continue
+            if last_name != None and speaker.last_name != last_name:
+                continue
+            if updated_at != None and fromDateString(speaker.updated_at).date != fromDateString(updated_at).date():
+                continue
+            matchingSpeakers.append(speaker)
+        return matchingSpeakers
+    
+    def getMatchingTracks(self, name=None, updated_at=None):
+        matchingTracks = []
+        for track in self.tracks:
+            if name != None and name != track.name:
+                continue
+            if updated_at != None and fromDateString(track.updated_at).date != fromDateString(updated_at).date():
+                continue
+            matchingTracks.append(track)
+        return matchingTracks
+    
+    def getMatchingEvents(self, title=None, updated_at=None):
+        matchingEvents = []
+        for event in self.events:
+            if title != None and event.name == title:
+                continue
+            if updated_at != None and fromDateString(event.updated_at).date != fromDateString(updated_at).date():
+                continue
+            matchingEvents.append(event)
+        return matchingEvents
+    
+class EDASData:    
+    def extractSessionData(self):
+        with open(self.sessionsFileName) as f:
             reader = csv.reader(f)
             cols = reader.next()
-            data = {}
+            self.sessionData = {}
             for num,row in enumerate(reader):
                 rowdata = {}
                 for i,entry in enumerate(row):
                     rowdata[cols[i]]=entry
                 rowdata['Papers'] = []
                 rowdata['ID']=num
-                data[rowdata['Title']] = rowdata
-            
-        
+                self.sessionData[rowdata['Title']] = rowdata
+    
+    def extractPaperData(self):
+        with open (self.papersFileName, 'r') as f:
+            reader = csv.reader(f)
+            cols = reader.next()
+            data = []
+            self.speakers = {}
+            for row in reader:
+                rowdata={}
+                for i,entry in enumerate(row):
+                    rowdata[cols[i]]=entry
+                try:
+                    self.sessionData[rowdata['Session']]['Papers'].append(rowdata)
+                except:
+                    print("No session data for session {}".format(rowdata['Session']))
+                    data.append(rowdata)
+                for n in range(1,9):
+                    author = rowdata['Author {}'.format(n)]
+                    if len(author)>0:
+                        print author
+                        speakerdata = extractAuthorInfo(author)
+                        speakerkey = "{}, {}".format(speakerdata['Last name'], speakerdata['First name'])
+                        speakerdata['Bio']=''
+                        if n==1:
+                            speakerdata['Bio'] = rowdata['First author bio']
+                        if not speakerkey in self.speakers.keys(): 
+                            self.speakers[speakerkey] = speakerdata
+    
+    def loadData(self, sessionsFileName="2017icce-sessions.csv", 
+                 papersFileName="2017icce-papers.csv" ):
+        self.sessionsFileName = sessionsFileName
+        self.papersFileName = papersFileName
+        self.extractSessionData()
+        self.extractPaperData()
+    
+    def exportTrackData(self, connfaData):
+        """
+            Export the track data.
+        """    
+        for key in self.sessionData.keys():
+            session = self.sessionData[key]
+            # id, name, order, deleted, created, updated
+            track = EventTrack(id=session['ID'], name=session['Title'],order=session['ID'],
+            deleted_at='NULL',created_at='NULL',updated_at=nowString())
+            connfaData.insertTrack(track)
+
+    
+    def prepareEventData(self):
+        eventExportData = []
+        paperid=1
+        for key in self.sessionData.keys():
+            session = self.sessionData[key]
+            if len(session['Papers']) > 0:
+                for paper in session['Papers']:
+                    sessionstarttime = datetime.strptime(paper['Session start time'],'%Y-%m-%d %H:%M')
+                    min_per_paper=float(session['Minutes per paper'])
+                    order = int(paper['Order in session'])
+                    if ("poster" in session['Title'].lower()):                
+                        starttime = session['Start time']
+                        endtime = session['End time']
+                    else:
+                        starttime = (sessionstarttime + datetime.timedelta(minutes=(order-1)*min_per_paper)).strftime('%Y-%m-%d %H:%M')
+                        endtime = (sessionstarttime + datetime.timedelta(minutes=order*min_per_paper)).strftime('%Y-%m-%d %H:%M')
+                    # id, start at, end at, text, name, place, version, level_id, type_id, track_id, url, event_type, order, deleted_at, created_at, updated_at
+                    eventExportData.append([paperid, starttime, endtime, paper['Abstract'], paper['Title'], paper['Session room'], 'NULL','NULL','1',session['ID'],paper['URL'], 'session', paper['Order in session'], 'NULL','NULL',datetime.now().strftime('%Y-%m-%d %H:%M')])
+                    #eventExportData.append(['NULL', starttime, endtime, paper['Abstract'], paper['Title'], paper['Session room'], 'NULL','NULL','1',session['ID'],paper['URL'], 'session', paper['Order in session'], 'NULL','NULL',datetime.now().strftime('%Y-%m-%d %H:%M')])
+                    paperid+=1
+            else:
+                eventExportData.append([paperid, session['Start time'], session['End time'], '', session['Title'], session['Room'], 'NULL','NULL','1',session['ID'], '', 'session', 'NULL', 'NULL','NULL',datetime.now().strftime('%Y-%m-%d %H:%M')])
+                #eventExportData.append(['NULL', session['Start time'], session['End time'], '', session['Title'], session['Room'], 'NULL','NULL','1',session['ID'], '', 'session', 'NULL', 'NULL','NULL',datetime.now().strftime('%Y-%m-%d %H:%M')])
+                paperid+=1
+        return eventExportData
+
+
+
 
 if __name__ == "__main__":
     data = ConnfaData()
-    data.load_data()
+    data.loadData()
+    edas = EDASData()
+    edas.loadData()
+    edas.exportTrackData(data)
