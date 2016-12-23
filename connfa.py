@@ -166,9 +166,9 @@ def event_speaker_from_array(array):
                         created_at=array[3], updated_at=array[4])
 
 class Speaker:
-    def __init__(self, id=None, first_name="", last_name="", characteristic="NULL",
-                 job="NULL", organization="NULL", twitter_name="NULL", website="NULL", 
-                 avatar="NULL", email="NULL", order="NULL", 
+    def __init__(self, id=None, first_name="", last_name="", characteristic="",
+                 job="", organization="", twitter_name="", website="", 
+                 avatar="", email="", order="NULL", 
                  created_at=nowString(), updated_at=nowString(),
                  deleted_at="NULL"):
         self.id = id
@@ -242,15 +242,19 @@ class ConnfaData:
         for track in self.tracks:
             if track in self.updatedTracks is False:
                 track.mark_deleted()
+                print("Track {} will be marked as deleted: {}".format(track.name, track))
         for speaker in self.speakers:
             if speaker in self.updatedSpeakers is False:
                 speaker.mark_deleted()
+                print("Speaker {} will be marked as deleted: {}".format(speaker.last_name, speaker))
         for event in self.events:
             if event in self.updatedEvents is False:
                 event.mark_deleted()
+                print("Event {} will be marked as deleted: {}".format(event.name, event))
         for eventSpeaker in self.eventSpeakers:
             if eventSpeaker in self.updatedEventSpeakers is False:
                 eventSpeaker.mark_invalid()
+                print("Event Speaker {} will be marked as deleted: {}".format(eventSpeaker.id, eventSpeaker))
     
     def loadData(self, speakersFilename="speakers_export.csv", 
                  eventsFilename="events_export.csv",
@@ -489,8 +493,8 @@ class EDASData:
                             eventSpeaker = EventSpeaker(event_id=event.id, speaker_id=speaker.id)
                             eventSpeaker = connfaData.insertEventSpeaker(eventSpeaker)
             else:
-                event = Event(start_at=toDateString(session['Start time']), 
-                              end_at=toDateString(session['End time']), text='', name=session['Title'], 
+                event = Event(start_at=session['Start time'], 
+                              end_at=session['End time'], text='', name=session['Title'], 
                               place=session['Room'], type_id='1', track_id=session['ID'], url='', 
                               event_type='session')
                 connfaData.insertEvent(event)
