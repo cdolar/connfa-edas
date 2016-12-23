@@ -61,7 +61,10 @@ class Event:
     
     def __str__(self):
         return self.__rep__()
-
+    
+    def mark_deleted(self):
+        self.deleted_at = nowString()
+    
     def to_array(self):
         # id, start at, end at, text, name, place, version, level_id, type_id, 
         # track_id, url, event_type, order, deleted_at, created_at, updated_at
@@ -110,6 +113,9 @@ class EventTrack:
     
     def __str__(self):
         return self.__rep__()
+
+    def mark_deleted(self):
+        self.deleted_at = nowString()
     
     def to_array(self):
         return [self.id, self.name, self.deleted_at, self.created_at, 
@@ -151,6 +157,9 @@ class EventSpeaker:
         self.speaker_id = eventSpeaker.speaker_id
         self.created_at = eventSpeaker.created_at
         self.updated_at = nowString()
+    
+    def mark_deleted(self):
+        self.speaker_id = 0
         
 def event_speaker_from_array(array):
     return EventSpeaker(id=int(array[0]), event_id=array[1], speaker_id=array[2],
@@ -203,6 +212,9 @@ class Speaker:
         self.created_at = speaker.created_at
         self.updated_at = nowString()
         self.deleted_at = speaker.deleted_at
+    
+    def mark_deleted(self):
+        self.deleted_at = nowString()
 
 def speaker_from_array(array):
     return Speaker(id=int(array[0]), first_name=array[1], last_name=array[2], 
@@ -215,12 +227,30 @@ class ConnfaData:
     def __init__(self):
         self.tracks=[]
         self.lastTrackId=0
+        self.updatedTracks=[]
         self.events=[]
         self.lastEventId=0
+        self.updatedEvents=[]
         self.speakers=[]
         self.lastSpeakerId=0
+        self.updatedSpeakers=[]
         self.eventSpeakers=[]
         self.lastEventSpeakerId=0
+        self.updatedEventSpeakers=[]
+    
+    def __markNonUpdatedAsDeleted(self):
+        for track in self.tracks:
+            if track in self.updatedTracks is False:
+                track.mark_deleted()
+        for speaker in self.speakers:
+            if speaker in self.updatedSpeakers is False:
+                speaker.mark_deleted()
+        for event in self.events:
+            if event in self.updatedEvents is False:
+                event.mark_deleted()
+        for eventSpeaker in self.eventSpeakers:
+            if eventSpeaker in self.updatedEventSpeakers is False:
+                eventSpeaker.mark_invalid()
     
     def loadData(self, speakersFilename="speakers_export.csv", 
                  eventsFilename="events_export.csv",
@@ -259,6 +289,7 @@ class ConnfaData:
                  eventsFilename="events_export.csv",
                  eventspeakersFilename="event_speakers_export.csv",
                  tracksFilename="tracks_export.csv"):
+        self.__markNonUpdatedAsDeleted()
         # first, save the tracks
         with open(tracksFilename,"w") as f:
             writer = csv.writer(f)
@@ -292,6 +323,7 @@ class ConnfaData:
             speaker = matchSpeakers[0]
             if len(matchSpeakers) > 1:
                 print("More than one match for speaker {}".format(speaker.__str__()))
+        self.updatedSpeakers.append(speaker)
         return speaker
     
     def insertTrack(self, track):
@@ -306,6 +338,7 @@ class ConnfaData:
             track = matchTracks[0]
             if len(matchTracks) > 1:
                 print("More than one match for track {}".format(track.__str__()))
+        self.updatedTracks.append(track)
         return track
     
     def insertEvent(self, event):
@@ -320,6 +353,7 @@ class ConnfaData:
             event = matchEvents[0]
             if len(matchEvents) > 1:
                 print("More than one match for event {}".format(event.__str__()))
+        self.updatedEvents.append(event)
         return event
     
     def insertEventSpeaker(self, eventSpeaker):
@@ -335,6 +369,7 @@ class ConnfaData:
             eventSpeaker = matchEventSpeakers[0]
             if len(matchEventSpeakers) > 1:
                 print("More than one match for event spekaer {}".format(eventSpeaker.__str__()))
+        self.updatedEventSpeakers.append(eventSpeaker)
         return eventSpeaker
     
     def getMatchingSpeakers(self, first_name=None, last_name=None, updated_at=None):
@@ -381,6 +416,7 @@ class ConnfaData:
             matchingEventSpeakers.append(eventSpeaker)
         return matchingEventSpeakers
     
+    
 class EDASData:    
     def __extractSessionData(self):
         with open(self.sessionsFileName) as f:
@@ -421,12 +457,12 @@ class EDASData:
     def exportData(self, connfaData):
         """
             Export the data.
-        """    
+        """   
         for key in self.sessionData.keys():
             session = self.sessionData[key]
             # id, name, order, deleted, created, updated
             track = EventTrack(id=session['ID'], name=session['Title'],order=session['ID'])
-            connfaData.insertTrack(track)
+            track = connfaData.insertTrack(track)
             if len(session['Papers']) > 0:
                 for paper in session['Papers']:
                     sessionstarttime = fromDateString(paper['Session start time'])
