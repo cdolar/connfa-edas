@@ -95,7 +95,7 @@ def event_from_array(array):
                      text=array[3], name=array[4], place=array[5], 
                      version=array[6], level_id=array[7], type_id=array[8],
                      track_id=array[9], url=array[10], event_type=array[11],
-                     order=array[12],deleted_at=array[13],
+                     order=int(array[12]),deleted_at=array[13],
                      created_at=array[14],updated_at=array[15])
 
 class EventTrack:
@@ -118,8 +118,8 @@ class EventTrack:
         self.deleted_at = nowString()
     
     def to_array(self):
-        return [self.id, self.name, self.deleted_at, self.created_at, 
-                self.updated_at]
+        return [self.id, self.name, self.order, 
+                self.deleted_at, self.created_at, self.updated_at]
     
     def update(self, track):
         self.name = track.name
@@ -129,7 +129,7 @@ class EventTrack:
         self.updated_at = nowString()
         
 def track_from_array(array):
-    return EventTrack(id=int(array[0]), name=array[1], order=array[2],
+    return EventTrack(id=int(array[0]), name=array[1], order=int(array[2]),
                           deleted_at=array[3], created_at=array[4], 
                           updated_at=array[5])
 
@@ -162,13 +162,13 @@ class EventSpeaker:
         self.speaker_id = 0
         
 def event_speaker_from_array(array):
-    return EventSpeaker(id=int(array[0]), event_id=array[1], speaker_id=array[2],
+    return EventSpeaker(id=int(array[0]), event_id=int(array[1]), speaker_id=int(array[2]),
                         created_at=array[3], updated_at=array[4])
 
 class Speaker:
-    def __init__(self, id=None, first_name="", last_name="", characteristic="",
-                 job="", organization="", twitter_name="", website="", 
-                 avatar="", email="", order=None, 
+    def __init__(self, id=None, first_name="", last_name="", characteristic="NULL",
+                 job="NULL", organization="NULL", twitter_name="NULL", website="NULL", 
+                 avatar="NULL", email="NULL", order="NULL", 
                  created_at=nowString(), updated_at=nowString(),
                  deleted_at="NULL"):
         self.id = id
@@ -220,7 +220,7 @@ def speaker_from_array(array):
     return Speaker(id=int(array[0]), first_name=array[1], last_name=array[2], 
                    characteristic=array[3], job=array[4], organization=array[5],
                    twitter_name=array[6], website=array[7], avatar=array[8],
-                   email=array[9], order=array[10], created_at=array[11],
+                   email=array[9], order=int(array[10]), created_at=array[11],
                    updated_at=array[12], deleted_at=array[13])
 
 class ConnfaData:
@@ -461,7 +461,7 @@ class EDASData:
         for key in self.sessionData.keys():
             session = self.sessionData[key]
             # id, name, order, deleted, created, updated
-            track = EventTrack(id=session['ID'], name=session['Title'],order=session['ID'])
+            track = EventTrack(id=session['ID'], name=session['Title'],order=int(session['ID'])
             track = connfaData.insertTrack(track)
             if len(session['Papers']) > 0:
                 for paper in session['Papers']:
@@ -477,7 +477,7 @@ class EDASData:
                     event = Event(start_at=starttime, end_at=endtime,
                                   text=paper['Abstract'], name=paper['Title'], place=paper['Session room'], 
                                   type_id='1',track_id=session['ID'],url=paper['URL'], 
-                                  event_type='session', order=paper['Order in session'])
+                                  event_type='session', order=int(paper['Order in session'])
                     event = connfaData.insertEvent(event)
                     for n in range(1,9):
                         author = paper['Author {}'.format(n)]
