@@ -12,9 +12,11 @@ def extractAuthorInfo(infostr):
         The string needs to be in the format Last_name, first_name (affiliation, country)
     """
     # pattern is (last_name, first_name (affliation, country))
-    matches = re.search("^(.+),([^()]+)\((.+)\)$",infostr)
+    matches = re.search("^([^()]+),([^()]+)\((.+)\)$",infostr)
     speaker = Speaker(last_name=matches.groups()[0], first_name=matches.groups()[1].strip(),
                       organization=matches.groups()[2])
+    if 'Ltd. &amp' in speaker.first_name:
+        print('break')
     return speaker
 
 def nowString():
