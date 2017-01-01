@@ -482,7 +482,7 @@ class EDASData:
                         endtime = toDateString(sessionstarttime + datetime.timedelta(minutes=order*min_per_paper))
                     event = Event(start_at=starttime, end_at=endtime,
                                   text=paper['Abstract'], name=paper['Title'], place=paper['Session room'], 
-                                  type_id='1',track_id=session['ID'],url=paper['URL'], 
+                                  type_id='1',track_id=track.id,url=paper['URL'], 
                                   event_type='session', order=paper['Order in session'])
                     event = connfaData.insertEvent(event)
                     for n in range(1,9):
@@ -497,7 +497,7 @@ class EDASData:
             else:
                 event = Event(start_at=session['Start time'], 
                               end_at=session['End time'], text='', name=session['Title'], 
-                              place=session['Room'], type_id='1', track_id=session['ID'], url='', 
+                              place=session['Room'], type_id='1', track_id=track.id, url='', 
                               event_type='session')
                 connfaData.insertEvent(event)
         # todo: set deleted_at to all events not updated today (or this hour)
