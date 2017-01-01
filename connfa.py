@@ -89,7 +89,7 @@ class Event:
         self.event_type = event.event_type
         self.order = event.order
         self.deleted_at = event.deleted_at
-        self.created_at = event.created_at
+        #self.created_at = event.created_at
         self.updated_at = nowString()
     
 def event_from_array(array):
@@ -127,7 +127,7 @@ class EventTrack:
         self.name = track.name
         self.order = track.order
         self.deleted_at = track.deleted_at
-        self.created_at = track.created_at
+        #self.created_at = track.created_at
         self.updated_at = nowString()
         
 def track_from_array(array):
@@ -157,7 +157,7 @@ class EventSpeaker:
     def update(self, eventSpeaker):
         self.event_id = eventSpeaker.event_id
         self.speaker_id = eventSpeaker.speaker_id
-        self.created_at = eventSpeaker.created_at
+        #self.created_at = eventSpeaker.created_at
         self.updated_at = nowString()
     
     def mark_deleted(self):
